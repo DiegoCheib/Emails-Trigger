@@ -1,34 +1,60 @@
 import tkinter as tk
 from tkinter import ttk
+import mysql.connector
 
 global clients_table
 
-clients_id = []
+db = mysql.connector.connect(
+    host="localhost",  # ou o endereço do servidor MySQL
+    user="root",
+    password="",
+    database="emailstrigger",
+)
+mycursor = db.cursor()
 
-clients_name = [
-    "test1",
-    "test2",
-    "test3",
-    "test4",
-    "test5",
-    "test6",
-    "test7",
-    "test8",
-    "Test9",
-    "Test10",
-]
-clients_email = [
-    "test1@gmail.com",
-    "test2@gmail.com",
-    "test3@gmail.com",
-    "test4@gmail.com",
-    "test5@gmail.com",
-    "test6@gmail.com",
-    "test7@gmail.com",
-    "test8@gmail.com",
-    "test9@gmail.com",
-    "test10@gmail.com",
-]
+
+def database():
+    db = mysql.connector.connect(
+        host="localhost",  # ou o endereço do servidor MySQL
+        user="root",
+        password="",
+    )
+    mycursor = db.cursor()
+    mycursor.execute("CREATE DATABASE IF NOT EXISTS emailstrigger ")
+    # Criar a tabela se não existir
+    mycursor.execute(
+        """
+    CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(40),
+        email VARCHAR(150) UNIQUE
+    )
+    """
+    )
+    # Commit as mudanças e fechar a conexão
+    db.commit()
+
+
+def display_data():
+    global clients_table
+    mycursor.execute("SELECT * FROM clients")
+    users = mycursor.fetchall()
+
+    for user in users:
+        clients_table.insert("", "end", values=user)
+
+
+def add_data(name_get, email_get, success, success_str):
+    new_name = name_get.get()  # Lê o Nome escrito
+    new_email = email_get.get()  # Lê o email escrito
+    new_user_insert = (  # Inserindo novo usuario adicionado na tabela
+        "INSERT INTO clients(name, email) VALUES(%s, %s)"
+    )
+    values = (new_name, new_email)
+    mycursor.execute((new_user_insert), values)
+    success.set("Sucess, Nome e email salvo!")
+    db.commit()
+    success_str.after(3000, lambda: success.set(""))  # Remove a mensagem acima
 
 
 def clients():
@@ -46,6 +72,10 @@ def clients():
         columns=("ID", "Clients Name", "Customer's email"),
         show="headings",
     )
+    s=ttk.Style()
+    s.theme_use('clam')
+    s.configure('Treeview', rowheight=60)
+
 
     # Coluna 1 da tabela, ID
     clients_table.column("ID", width=50, minwidth=50, stretch=True)
@@ -61,42 +91,32 @@ def clients():
 
     # X and Y da tabela
     clients_table.grid(row=0, column=0)
+    scrollbar = ttk.Scrollbar(
+        janela_clients, orient="vertical", command=clients_table.yview
+    )
+    # X and Y da Scrollbar
+    scrollbar.place(x=650, relheight=1)
+    # configuração da scrolbbar
+    clients_table.configure(yscrollcommand=scrollbar.set)
+    janela_clients.grid_rowconfigure(
+        100,
+        weight=1,
+    )
 
-    # Chamando Função TableList
-    TableList(clients_table)
+    # Diminua o tamanho da barra de rolagem
 
+    # Chamando função para exibir o banco de dados
+    display_data()
+
+    # Butão para dar update no banco de dados
+    update_button = tk.Button(
+        janela_clients,
+        text="Update",
+        width=10,
+    )
+    update_button.place(x=745, y=150)
     # Mantendo janela clients aberta
     janela_clients.mainloop()
-
-
-# Adiciona todos os IDs, Nomes e Emails na table_clients
-def TableList(self):
-    contador = 0
-    # Conseguindo os IDs dos clientes
-    for client in range(0, len(clients_name)):
-        clients_id.append([client + 1])
-    # Inserindo Todos os IDs, Nomes e Emails
-    for i in range(0, len(clients_name)):
-        self.insert(
-            "",
-            "end",
-            values=(
-                clients_id[contador],
-                clients_name[contador],
-                clients_email[contador],
-            ),
-        )
-        contador += 1
-    return self
-
-
-def add_data(name_get, email_get, success, success_str):
-    new_name = name_get.get()  # Lê o Nome escrito
-    clients_name.append(new_name)  # Adiciona o Nome escrito na lista clients_name
-    new_email = email_get.get()  # Lê o email escrito
-    clients_email.append(new_email)  # Adiciona o Email escrito na lista clients_email
-    success.set("Sucess, Nome e email salvo!")
-    success_str.after(3000, lambda: success.set(""))  # Remove a mensagem acima
 
 
 # Criar uma janela
@@ -108,7 +128,7 @@ janela_main.title("Email Trigger")
 
 # button for clients list
 clients_button = tk.Button(
-    janela_main, text="Clients", height=5, width=25, command=clients
+    janela_main, text="Clients", height=5, width=25, command=(clients)
 )
 clients_button.place(x=50, y=100)
 
@@ -139,7 +159,6 @@ Add_Clients = tk.Button(
     width=10,
     command=lambda: add_data(name_entry, email_entry, success, success_str),
 )
-print(clients_email, clients_name)
 # Local do butão X e Y(Plano cartesiano)
 Add_Clients.place(x=460, y=450)
 # Escrita de sucesso ao adicionar um Nome e Email na tabela
