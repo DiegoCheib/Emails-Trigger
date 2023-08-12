@@ -1,7 +1,11 @@
 import tkinter as tk
 from tkinter import ttk
 import mysql.connector
-from ttkwidgets import CheckboxTreeview
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # ***********************************************************************************************************************#
 
@@ -13,8 +17,43 @@ db = mysql.connector.connect(
 )
 mycursor = db.cursor()
 
-# ***********************************************************************************************************************#
 
+# ***********************************************************************************************************************#
+def smtp_connect():
+   # Configurações do servidor
+    servidor = smtplib.SMTP("smtp.gmail.com", 587)
+    servidor.set_debuglevel(True)
+    servidor.starttls()
+    # Configurações de mensagens
+    # Informações do remetente
+    remetente_email = "scriptemailportifolio@gmail.com"
+    senha = "testescript"
+    # Logar no servidor
+    servidor.login(remetente_email, senha)
+    # Obtendo os itens marcados
+    checked_items = get_checked_items()
+    if not checked_items:
+        print("Nenhum item marcado.")
+        return    
+    for item in checked_items:
+        destinatario_email = item[2]  # O email está na terceira posição dos valores da linha
+
+        msg = MIMEMultipart()
+        msg["From"] = remetente_email
+        msg["To"] = destinatario_email
+        msg["Subject"] = "Teste Script"
+        
+        mensagem = texto_email.get("1.0", "end-1c")
+        msg.attach(MIMEText(mensagem, "plain"))
+
+        # Enviando o email
+        servidor.sendmail(remetente_email, destinatario_email, msg.as_string())
+        print(f"Email enviado para: {destinatario_email}")
+
+    # Encerrando a conexão
+    servidor.quit()
+
+#***********************************************************************************************************************#
 
 def database():
     db = mysql.connector.connect(
@@ -41,13 +80,124 @@ def database():
 # ***********************************************************************************************************************#
 
 
+def toggleCheck(event):
+    item_id = clients_table.identify_row(event.y)
+    current_state = clients_table.item(item_id, "values")[3]
+
+    if current_state == "checked":
+        new_state = "unchecked"
+    else:
+        new_state = "checked"
+
+    clients_table.item(
+        item_id, values=(clients_table.item(item_id, "values")[0:3] + (new_state,))
+    )
+
+
+# ***************************************************************************************************************************#
+
+
+def get_checked_items():
+    global checked_items
+    checked_items = []
+
+    for item_id in clients_table.get_children():
+        tags = clients_table.item(item_id, "tags")
+
+        if "checked" in tags:
+            values = clients_table.item(item_id, "values")
+            checked_items.append(values)
+
+    return checked_items
+
+
+# ***************************************************************************************************************************#
+
+
+
+
+#***************************************************************************************************************************#
+def email():
+    global clients_table
+    global texto_email
+    janela_main.destroy()
+    # Criar uma janela
+    janela_emails = tk.Tk()
+    # Tamanho Janela
+    janela_emails.geometry("900x600")
+    # Título Janela
+    janela_emails.title("Emails Windown")
+
+    # Exibindo as tabelas
+    clients_table = ttk.Treeview(
+        janela_emails,
+        columns=("ID", "Clients Name", "Customer's email", "Select"),
+        show="headings",
+    )
+    clients_table.heading("#1", text="ID")
+    clients_table.heading("#2", text="Clients Name")
+    clients_table.heading("#3", text="Customer's email")
+    clients_table.heading("#4", text="Select")
+
+    s = ttk.Style()
+    s.theme_use("clam")
+    s.configure("Treeview", rowheight=30)
+
+    clients_table.tag_configure("checked", background="green")
+    clients_table.tag_configure("unchecked", background="red")
+
+    # Coluna 1 da tabela, ID
+    clients_table.column("ID", width=50, minwidth=50, stretch=True)
+    clients_table.heading("#1", text="ID")
+
+    # Coluna 2 da tabela, Nome dos clients
+    clients_table.column("Clients Name", width=200, minwidth=400, stretch=False)
+    clients_table.heading("#2", text="Clients Name")
+
+    # Coluna 3 da tabela, Email dos clients
+    clients_table.column("Customer's email", width=400, minwidth=400, stretch=False)
+    clients_table.heading("#3", text="Customer's email")
+
+    # Coluna 4 da tabela, Checkbox
+    clients_table.column("Select", width=200, minwidth=200, stretch=False)
+    clients_table.heading("#4", text="")
+
+    # X and Y da tabela
+    clients_table.grid(row=0, column=0)
+    scrollbar = ttk.Scrollbar(
+        janela_emails, orient="vertical", command=clients_table.yview
+    )
+    # X and Y da Scrollbar
+    scrollbar.place(relx=0.988, rely=0, relheight=1)
+
+    # configuração da scrolbbar
+    clients_table.configure(yscrollcommand=scrollbar.set)
+    janela_emails.grid_rowconfigure(
+        50,
+        weight=30,
+    )
+    display_data()
+    clients_table.bind("<Button 1>", toggleCheck)
+    get_checked_items()
+    texto_email_label = tk.Label(janela_emails, text="Email:")
+    texto_email_label.place(x=100, y=380)
+    texto_email = tk.Text(janela_emails, width=60, height=10)
+    texto_email.place(x=100, y=400)
+
+    email_enviar_button = tk.Button(janela_emails, width=5, text="Enviar", command=smtp_connect)
+    email_enviar_button.place(x=600, y=540)
+
+
+# ***************************************************************************************************************************#
+
+
 def display_data():
     global clients_table
     mycursor.execute("SELECT * FROM clients")
     users = mycursor.fetchall()
 
     for user in users:
-        clients_table.insert("", "end", values=user)
+        clients_table.insert("", "end", values=user + ("unchecked",))
 
 
 # ***********************************************************************************************************************#
@@ -153,6 +303,9 @@ def remove_client():
 def update_display_data():
     clients_table.delete()
     display_data()
+
+
+# ***************************************************************************************************************************#
 
 
 def clients():
@@ -281,7 +434,9 @@ clients_button = tk.Button(
 clients_button.place(x=50, y=100)
 
 # button for email script
-clients_button = tk.Button(janela_main, text="Emails", height=5, width=25, command="")
+clients_button = tk.Button(
+    janela_main, text="Emails", height=5, width=25, command=email
+)
 clients_button.place(x=350, y=100)
 
 # button for Report
