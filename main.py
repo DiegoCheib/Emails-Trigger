@@ -2,10 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import mysql.connector
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-import logging
-logging.basicConfig(level=logging.DEBUG)
+from mailjet_rest import Client
 
 # ***********************************************************************************************************************#
 
@@ -19,41 +16,52 @@ mycursor = db.cursor()
 
 
 # ***********************************************************************************************************************#
-def smtp_connect():
-   # Configurações do servidor
-    servidor = smtplib.SMTP("smtp.gmail.com", 587)
-    servidor.set_debuglevel(True)
-    servidor.starttls()
-    # Configurações de mensagens
-    # Informações do remetente
-    remetente_email = "scriptemailportifolio@gmail.com"
-    senha = "testescript"
-    # Logar no servidor
-    servidor.login(remetente_email, senha)
-    # Obtendo os itens marcados
+def API_Mailjet():
     checked_items = get_checked_items()
-    if not checked_items:
-        print("Nenhum item marcado.")
-        return    
+    print(checked_items)
+
+    texto_email_content = texto_email.get("1.0", "end-1c")
+    assunto_email_content = assunto_email_entry.get()
+
+    # Obtendo os itens marcados
     for item in checked_items:
-        destinatario_email = item[2]  # O email está na terceira posição dos valores da linha
+        destinatario_email = item["email"]
+        destinatario_email_name = item["name"]
+        # Substitua 'YOUR_API_KEY' e 'YOUR_API_SECRET' pelas suas chaves da API
+        mailjet = Client(
+            auth=(
+                "f5de26171d5bdc673e05a2ed5b0c2d30",
+                "2f271cc7871cffb3d3e11aab0ec93ce4",
+            ),
+            version="v3.1",
+        )
 
-        msg = MIMEMultipart()
-        msg["From"] = remetente_email
-        msg["To"] = destinatario_email
-        msg["Subject"] = "Teste Script"
-        
-        mensagem = texto_email.get("1.0", "end-1c")
-        msg.attach(MIMEText(mensagem, "plain"))
+        data = {
+            "Messages": [
+                {
+                    "From": {
+                        "Email": "scriptemailportifolio@gmail.com",
+                        "Name": "Teste Script",
+                    },
+                    "To": [
+                        {
+                            "Email": f"{destinatario_email}",
+                            "Name": f"{destinatario_email_name}",
+                        }
+                    ],
+                    "Subject": assunto_email_content,
+                    "TextPart": texto_email_content,
+                }
+            ]
+        }
 
-        # Enviando o email
-        servidor.sendmail(remetente_email, destinatario_email, msg.as_string())
-        print(f"Email enviado para: {destinatario_email}")
+        result = mailjet.send.create(data=data)
+        print(result.status_code)
+        print(result.json())
 
-    # Encerrando a conexão
-    servidor.quit()
 
-#***********************************************************************************************************************#
+# ***********************************************************************************************************************#
+
 
 def database():
     db = mysql.connector.connect(
@@ -78,6 +86,7 @@ def database():
 
 
 # ***********************************************************************************************************************#
+marked_items = []
 
 
 def toggleCheck(event):
@@ -86,27 +95,29 @@ def toggleCheck(event):
 
     if current_state == "checked":
         new_state = "unchecked"
+        marked_items.remove(item_id)  # Remover item da lista
+
     else:
         new_state = "checked"
+        marked_items.append(item_id)  # Adicionar item à lista
 
     clients_table.item(
         item_id, values=(clients_table.item(item_id, "values")[0:3] + (new_state,))
     )
+    print(marked_items)
 
 
 # ***************************************************************************************************************************#
 
 
+checked_items = []
+
+
 def get_checked_items():
     global checked_items
-    checked_items = []
-
-    for item_id in clients_table.get_children():
-        tags = clients_table.item(item_id, "tags")
-
-        if "checked" in tags:
-            values = clients_table.item(item_id, "values")
-            checked_items.append(values)
+    for item_id in marked_items:
+        email, name = get_email_and_name_by_id(item_id)
+        checked_items.append({"email": email, "name": name})
 
     return checked_items
 
@@ -114,12 +125,58 @@ def get_checked_items():
 # ***************************************************************************************************************************#
 
 
+def limpar_campos():
+    assunto_email_entry.delete("0", "end")
+    texto_email.delete("1.0", "end")
 
 
-#***************************************************************************************************************************#
+# ***************************************************************************************************************************#
+def funcao_composta_email():
+    API_Mailjet()
+    limpar_campos()
+
+
+# ***************************************************************************************************************************#
+
+
+def funcao_composta_add_client():
+    add_data()
+    limpar_campos()
+
+
+# ***************************************************************************************************************************#
+
+
+def funcao_composta_remove_client():
+    remove_client()
+    limpar_campos()
+
+
+# ***************************************************************************************************************************#
+
+
+def funcao_composta_update_client():
+    update_data()
+    limpar_campos()
+
+
+# ***************************************************************************************************************************#
+
+
+def get_email_and_name_by_id(item_id):
+    values = clients_table.item(item_id, "values")
+    email = values[2]  # Assuming email is the third column
+    name = values[1]  # Assuming name is the second column
+    return email, name
+
+
+# ***************************************************************************************************************************#
 def email():
-    global clients_table
     global texto_email
+    global clients_table
+    global assunto_email_entry
+
+    # Fechando a Janela Main
     janela_main.destroy()
     # Criar uma janela
     janela_emails = tk.Tk()
@@ -138,7 +195,7 @@ def email():
     clients_table.heading("#2", text="Clients Name")
     clients_table.heading("#3", text="Customer's email")
     clients_table.heading("#4", text="Select")
-
+    # Colocando Estilo no display
     s = ttk.Style()
     s.theme_use("clam")
     s.configure("Treeview", rowheight=30)
@@ -176,15 +233,28 @@ def email():
         50,
         weight=30,
     )
+
+    # Chamando Função para mostrar o banco de dados MySQl
     display_data()
+
+    # Ao clicarmos em qualquer area do display Altera o a 4 coluna, mostrando que foi selecionado
     clients_table.bind("<Button 1>", toggleCheck)
-    get_checked_items()
+
+    # Pega e salva os itens que foram selecionados
+
+    assunto_email_label = tk.Label(janela_emails, text="Assunto:")
+    assunto_email_label.place(x=100, y=340)
+    assunto_email_entry = tk.Entry(janela_emails, width=40)
+    assunto_email_entry.place(x=100, y=360)
+
     texto_email_label = tk.Label(janela_emails, text="Email:")
     texto_email_label.place(x=100, y=380)
     texto_email = tk.Text(janela_emails, width=60, height=10)
     texto_email.place(x=100, y=400)
 
-    email_enviar_button = tk.Button(janela_emails, width=5, text="Enviar", command=smtp_connect)
+    email_enviar_button = tk.Button(
+        janela_emails, width=5, text="Enviar", command=funcao_composta_email
+    )
     email_enviar_button.place(x=600, y=540)
 
 
