@@ -3,8 +3,7 @@ from tkinter import ttk
 import mysql.connector
 import smtplib
 from mailjet_rest import Client
-from funcoes_clients import *
-from funcoes_email import *
+from funcoes import *
 
 # ***********************************************************************************************************************#
 
@@ -57,40 +56,41 @@ def database():
 
 
 # ***********************************************************************************************************************#
-# Criando a janela principal
-janela_main = tk.Tk()
-# Tamanho Janela
-janela_main.geometry("900x600")
-# Título Janela
-janela_main.title("Email Trigger")
-fonte_main = ("Times", "16")
-# Butão para a área de clients
-clients_button = tk.Button(
-    janela_main,
-    text="Clients",
-    height=5,
+def main():
+    # Criando a janela principal
+    janela_main = tk.Tk()
+    # Tamanho Janela
+    janela_main.geometry("900x600")
+    # Título Janela
+    janela_main.title("Email Trigger")
+    fonte_main = ("Times", "16")
+    # Butão para a área de clients
+    clients_button = tk.Button(
+        janela_main,
+        text="Clients",
+        height=5,
+        width=25,
+        command=lambda: clients(janela_main),
+        font=fonte_main,
+        )
+    # Local do butão, plano cartesiano X e Y
+    clients_button.place(x=120, y=205)
+    # Butão para área de Script de Email
+    email_button = tk.Button(
+        janela_main,
+        text="Emails",
+        height=5,
     width=25,
-    command=lambda: clients(janela_main),
-   font=fonte_main,
-    )
-# Local do butão, plano cartesiano X e Y
-clients_button.place(x=120, y=205)
-
-# Butão para área de Script de Email
-email_button = tk.Button(
-    janela_main,
-    text="Emails",
-    height=5,
-   width=25,
-   command=lambda: email(janela_main),
-   font=fonte_main,
-    )
-# Local do butão, plano cartesiano X e Y
-email_button.place(x=480, y=205)
-# ***********************************************************************************************************************
-# ESTILIZAÇÃO JANELA MAIN
-janela_main.configure(bg="#CFD2CD")
-clients_button.config(bg="#252627", fg="#fff")
-email_button.config(bg="#252627", fg="#fff")
-# Mantendo ela aberta
-janela_main.mainloop()
+        command=lambda: email(janela_main),
+        font=fonte_main,
+        )
+    # Local do butão, plano cartesiano X e Y
+    email_button.place(x=480, y=205)
+    # ***********************************************************************************************************************
+    # ESTILIZAÇÃO JANELA MAIN
+    janela_main.configure(bg="#CFD2CD")
+    clients_button.config(bg="#252627", fg="#fff")
+    email_button.config(bg="#252627", fg="#fff")
+    # Mantendo ela aberta
+    janela_main.mainloop()
+main()
