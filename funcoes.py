@@ -438,7 +438,7 @@ def clients(janela_main):
 
     # Definindo o butão para atualizar o banco de dados mostrado
     update_display_data_button = tk.Button(
-        janela_clients, text="Atualizar", width=10, command=update_display_data
+        janela_clients, text="Atualizar", width=10, command=update_display_data(clients_table)
     )
     # Local do butão no plano cartesiano X e Y
     update_display_data_button.place(x=745, y=480)
@@ -499,11 +499,11 @@ def back_button_function():
 # ************************************************************************************************************************************************************************************************
 
 
-def update_display_data():
+def update_display_data(clients_table):
     # Apaga o banco de dados anterior
     clients_table.delete(*clients_table.get_children())
     # Exibe ele novamente com as novas informações salvas
-    display_data_(clients_table)
+    display_data_()
 
 
 # ************************************************************************************************************************************************************************************************

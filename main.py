@@ -17,25 +17,42 @@ mycursor = db.cursor()
 
 
 # ***********************************************************************************************************************#
+
+
+# CHAMAR A FUNÇÃO CASO NÃO TENHA O BANCO
 def database():
     db = mysql.connector.connect(
-        host="localhost",  # ou o endereço do servidor MySQL
-        user="root",  # Seu user utilizado
-        password="",  # Sua senha utilizada no banco de dados
+        host="localhost",
+        user="root",
+        password=""
     )
     mycursor = db.cursor()
-    mycursor.execute("CREATE DATABASE IF NOT EXISTS emailstrigger ")
+    
+    # Criar o banco de dados se não existir
+    mycursor.execute("CREATE DATABASE IF NOT EXISTS emailstrigger")
+    
+    # Reconectar ao novo banco de dados para usar
+    db = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="",
+        database="emailstrigger"
+    )
+    mycursor = db.cursor()
+    
     # Criar a tabela se não existir
     mycursor.execute(
         """
-    CREATE TABLE IF NOT EXISTS clients (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name VARCHAR(40),
-        email VARCHAR(150) UNIQUE
+        CREATE TABLE IF NOT EXISTS clients (
+            id INTEGER PRIMARY KEY AUTO_INCREMENT,
+            name VARCHAR(40),
+            email VARCHAR(150) UNIQUE
+        )
+        """
     )
-    """
-    )
-    insert_if_not_exist = "INSERT INTO clients IF NOT EXIST values( %s, %s)"
+    
+    # Inserir registros, ignorando se já existem
+    insert_if_not_exist = "INSERT IGNORE INTO clients (name, email) VALUES (%s, %s)"
     values = [
         ("test1", "test1@gmail.com"),
         ("test2", "test2@gmail.com"),
@@ -50,9 +67,12 @@ def database():
         ("test11", "test11@gmail.com"),
         ("test12", "test12@gmail.com"),
     ]
-    mycursor.execute(insert_if_not_exist, values)
-    # Commit as mudanças e fechar a conexão
+    mycursor.executemany(insert_if_not_exist, values)
+    
+    # Commit das mudanças e fechamento da conexão
     db.commit()
+    db.close()
+
 
 
 # ***********************************************************************************************************************#
