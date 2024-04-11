@@ -1,0 +1,15 @@
+# Arquivos de sistema operacional
+.DS_Store
+
+# Arquivos de ambiente
+.env
+
+# Dependências
+env/
+
+# Arquivos de cache
+__pycache__/
+
+# Arquivos de banco de dados
+*.db
+*.sqlite3
