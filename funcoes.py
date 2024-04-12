@@ -14,8 +14,9 @@ font_client = ("Times", 12)
 db = mysql.connector.connect(
     host="localhost",  # ou o endereço do servidor MySQL
     user="root",
-    password="",
+    password="root",
     database="emailstrigger",
+    auth_plugin='mysql_native_password'
 )
 mycursor = db.cursor()
 
@@ -166,6 +167,8 @@ def back_button_():
     janela_main.configure(bg="#CFD2CD")
     clients_button.config(bg="#252627", fg="#fff")
     email_button.config(bg="#252627", fg="#fff")
+
+    janela_main.mainloop()
 
 
 # ************************************************************************************************************************************************************************************************
@@ -523,7 +526,7 @@ def add_data():
     new_name = name_entry.get()  # Lê o novo cliente
     new_email = email_entry.get()  # Lê o email do cliente escrito
     new_user_insert = (  # Inserindo novo usuario adicionado na tabela
-        "INSERT INTO clients(name, email) VALUES(%s, %s)"
+        "INSERT INTO emails(clients_name, clients_email) VALUES(%s, %s)"
     )
     values = (new_name, new_email)
     # Executando a inserção no banco de dados
@@ -625,13 +628,19 @@ def remove_client():
 
 
 def display_data_():
-    # Seleciona todos os itens de todas as colunas existentes no banco de dados
-    mycursor.execute("SELECT * FROM clients")
-    # Salva esses itens na variavel USERS
-    users = mycursor.fetchall()
-    # Para cada user existente na variavel users, salvada na linha de cima, Insere ele no TreeView, fazendo com que conseguimos exibir o banco de dados em tempo real
-    for user in users:
-        clients_table.insert("", "end", values=user + ("unchecked",))
+    db = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="root",
+        auth_plugin='mysql_native_password',
+        database="emailstrigger",
+    )
+    cursor = db.cursor()
+    cursor.execute("SELECT id, clients_name, clients_email,triggered FROM emails")
+    rows = cursor.fetchall()
+    for row in rows:
+        # Supondo que a quarta coluna 'Select' seja um checkbox ou algo interativo:
+        clients_table.insert("", "end", values=(row[0], row[1], row[2], ""))
 
 
 # ************************************************************************************************************************************************************************************************

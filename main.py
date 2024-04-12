@@ -4,78 +4,74 @@ import mysql.connector
 import smtplib
 from mailjet_rest import Client
 from funcoes import *
-
-# ***********************************************************************************************************************#
-
-db = mysql.connector.connect(
-    host="localhost",  # ou o endereço do servidor MySQL
-    user="root",
-    password="",
-    database="emailstrigger",
-)
-mycursor = db.cursor()
+import time
 
 
 # ***********************************************************************************************************************#
 
 
-# CHAMAR A FUNÇÃO CASO NÃO TENHA O BANCO
+
+# ***********************************************************************************************************************#
+
+
 def database():
     db = mysql.connector.connect(
         host="localhost",
         user="root",
-        password=""
+        password="root",
+        auth_plugin='mysql_native_password'
     )
     mycursor = db.cursor()
-    
-    # Criar o banco de dados se não existir
-    mycursor.execute("CREATE DATABASE IF NOT EXISTS emailstrigger")
+
+   # Obter a lista de todos os bancos de dados
+    mycursor.execute("SHOW DATABASES")
+    databases = [db[0] for db in mycursor.fetchall()]
+
+    # Verificar se o banco de dados "emailstrigger" existe
+    if "emailstrigger" not in databases:
+        # Se não existir, criar o banco de dados
+        mycursor.execute("CREATE DATABASE emailstrigger")
+
+    time.sleep(1)
     
     # Reconectar ao novo banco de dados para usar
     db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="emailstrigger"
+    host="localhost",
+    user="root",
+    password="root",
+    database="emailstrigger",
+    auth_plugin='mysql_native_password'
     )
     mycursor = db.cursor()
     
     # Criar a tabela se não existir
-    mycursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS clients (
-            id INTEGER PRIMARY KEY AUTO_INCREMENT,
-            name VARCHAR(40),
-            email VARCHAR(150) UNIQUE
+    mycursor.execute("""
+    CREATE TABLE IF NOT EXISTS emails (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        clients_name VARCHAR(255),
+        clients_email VARCHAR(255),
+        triggered ENUM('Not Selected', 'Selected', 'Option 3')
         )
-        """
-    )
+    """)
+
     
-    # Inserir registros, ignorando se já existem
-    insert_if_not_exist = "INSERT IGNORE INTO clients (name, email) VALUES (%s, %s)"
-    values = [
-        ("test1", "test1@gmail.com"),
-        ("test2", "test2@gmail.com"),
-        ("test3", "test3@gmail.com"),
-        ("test4", "test4@gmail.com"),
-        ("test5", "test5@gmail.com"),
-        ("test6", "test6@gmail.com"),
-        ("test7", "test7@gmail.com"),
-        ("test8", "test8@gmail.com"),
-        ("test9", "test9@gmail.com"),
-        ("test10", "test10@gmail.com"),
-        ("test11", "test11@gmail.com"),
-        ("test12", "test12@gmail.com"),
-    ]
-    mycursor.executemany(insert_if_not_exist, values)
+    # Inserir dados de teste
+    mycursor.execute("""
+    INSERT INTO emails (clients_name, clients_email, triggered) VALUES
+    ('teste1','test1@example.com', 'Not Selected'),
+    ('teste2','test2@example.com', 'Not Selected'),
+    ('teste3','test3@example.com', 'Not Selected')
+    """)
     
-    # Commit das mudanças e fechamento da conexão
     db.commit()
     db.close()
+
+#database()
 
 
 
 # ***********************************************************************************************************************#
+
 def main():
     # Criando a janela principal
     janela_main = tk.Tk()
@@ -114,3 +110,4 @@ def main():
     # Mantendo ela aberta
     janela_main.mainloop()
 main()
+
